@@ -8,43 +8,56 @@ export type Post = {
   content: string;
 };
 
-function parseFrontmatter(fileContent: string) {
-  let frontmatterRegex = /---\s*([\s\S]*?)\s*---/;
-  let match = frontmatterRegex.exec(fileContent);
-  let frontMatterBlock = match![1];
-  let content = fileContent.replace(frontmatterRegex, "").trim();
-  let metadata = YAML.parse(frontMatterBlock);
+export function parseFrontmatter(fileContent: string) {
+  const frontmatterRegex = /^---\s*([\s\S]*?)\s*---/;
+  const match = frontmatterRegex.exec(fileContent);
+  if (!match) {
+    throw new Error("Frontmatter not found");
+  }
+  const frontMatterBlock = match[1];
+  const content = fileContent.replace(frontmatterRegex, "").trim();
+  const metadata = YAML.parse(frontMatterBlock);
 
   return { metadata, content };
 }
 
-function getMDXFiles(dir: string) {
-  return fs
-    .readdirSync(dir)
-    .filter(
-      (file) =>
-        path.extname(file) === ".mdx" && !path.basename(file).startsWith("_"),
-    );
+export function getMDXFiles(dir: string) {
+  try {
+    return fs
+      .readdirSync(dir)
+      .filter(
+        (file) =>
+          path.extname(file) === ".mdx" && !path.basename(file).startsWith("_"),
+      );
+  } catch (error) {
+    console.error(`Error reading directory ${dir}:`, error);
+    return [];
+  }
 }
 
-function readMDXFile(filePath: string) {
-  let rawContent = fs.readFileSync(filePath, "utf-8");
-  return parseFrontmatter(rawContent);
+export function readMDXFile(filePath: string) {
+  try {
+    const rawContent = fs.readFileSync(filePath, "utf-8");
+    return parseFrontmatter(rawContent);
+  } catch (error) {
+    console.error(`Error reading file ${filePath}:`, error);
+    return { metadata: {}, content: "" };
+  }
 }
 
 export function parseSlug(fileBasename: string) {
-  let prefix = fileBasename.indexOf("-");
-  if (prefix && +fileBasename.slice(0, prefix)) {
+  const prefix = fileBasename.indexOf("-");
+  if (prefix !== -1 && !isNaN(Number(fileBasename.slice(0, prefix)))) {
     return fileBasename.slice(prefix + 1);
   }
   return fileBasename;
 }
 
-function getMDXData(dir: string): Post[] {
-  let mdxFiles = getMDXFiles(dir);
+export function getMDXData(dir: string): Post[] {
+  const mdxFiles = getMDXFiles(dir);
   return mdxFiles.map((file) => {
-    let { metadata, content } = readMDXFile(path.join(dir, file));
-    let slug = parseSlug(path.basename(file, path.extname(file)));
+    const { metadata, content } = readMDXFile(path.join(dir, file));
+    const slug = parseSlug(path.basename(file, path.extname(file)));
 
     return {
       metadata,
